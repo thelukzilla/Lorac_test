@@ -132,10 +132,10 @@ def _hash_password(password: str) -> str:
 
 
 class MemoryDatabase:
-    # Beta note: this in-process store is intentional for fast validation.
-    # Every mutation calls _save_to_file() so testers keep their data after a
-    # local restart, but production deploys should replace it with Postgres or
-    # another shared database before multiple workers are enabled.
+    # Banco em memoria usado para validar a beta rapidamente.
+    # Cada mutacao chama _save_to_file(), mantendo os dados apos reiniciar
+    # localmente. Em producao, substitua por Supabase/Postgres antes de usar
+    # multiplos workers ou muitos usuarios simultaneos.
     def __init__(self):
         self.users: Dict[str, User] = {}
         self.rooms: Dict[str, Room] = {}
@@ -172,14 +172,14 @@ class MemoryDatabase:
         }
         data["private_messages"] = [asdict(m) for m in self.private_messages]
         try:
-            with open(DATA_FILE, 'w', encoding='utf-8') as f:  # Add encoding
+            with open(DATA_FILE, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
             logger.error(f"Erro ao salvar dados principais: {e}")
 
         turmas_data = {"turmas": [asdict(t) for t in self.turmas.values()]}
         try:
-            with open(TURMAS_FILE, 'w', encoding='utf-8') as f:  # Add encoding
+            with open(TURMAS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(turmas_data, f, indent=2)
         except Exception as e:
             logger.error(f"Erro ao salvar turmas: {e}")
@@ -209,7 +209,7 @@ class MemoryDatabase:
 
       
         try:
-            with open(TURMAS_FILE, 'r', encoding='utf-8') as f:  # Add encoding
+            with open(TURMAS_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             self.turmas = {t["id"]: Turma(**t) for t in data.get("turmas", [])}
         except FileNotFoundError:
@@ -575,9 +575,9 @@ manager = None
 
 
 class ConnectionManager:
-    # Keeps the collaboration state that only exists while the FastAPI process
-    # is alive: room sockets, online users and call participants. This is why
-    # the current beta should run as a single web process.
+    # Mantem o estado colaborativo enquanto o processo FastAPI esta vivo:
+    # sockets por sala, usuarios online e participantes de chamada. Por isso,
+    # a beta atual funciona melhor com um unico processo web.
     def __init__(self):
         self.active_connections: Dict[str, Dict[str, WebSocket]] = {}
         self.user_info: Dict[str, dict] = {}
@@ -658,6 +658,8 @@ app = FastAPI(title="StudySync API", version="2.0.0", lifespan=lifespan)
 app.include_router(ai_router)
 app.add_middleware(
     CORSMiddleware,
+    # Em desenvolvimento pode ser "*"; no deploy final, prefira listar
+    # explicitamente os dominios da Vercel e do painel administrativo.
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
@@ -673,6 +675,8 @@ async def root():
 
 @app.get("/api/health")
 async def healthcheck():
+    # Endpoint simples para validar deploy em Vercel/Render sem depender de
+    # login, WebSocket ou dados de usuario. Use primeiro ao testar um link novo.
     return {
         "status": "ok",
         "app": "lorac",
@@ -683,6 +687,8 @@ async def healthcheck():
 
 @app.get("/api/livekit-token")
 async def get_livekit_token(room: str, username: str):
+    # Chamadas ao vivo sao opcionais na beta. Sem pacote/chaves LiveKit, a UI
+    # continua funcionando e apenas esta rota retorna uma mensagem clara.
     if not LIVEKIT_AVAILABLE:
         raise HTTPException(status_code=503, detail="LiveKit nao esta instalado no ambiente.")
     if not (LIVEKIT_URL and LIVEKIT_API_KEY and LIVEKIT_API_SECRET):
@@ -1291,9 +1297,9 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, user_id: str):
 async def handle_websocket_message(websocket, room_id, user_id, user, data):
     msg_type = data.get("type", "")
 
-    # Message types are treated as a small realtime protocol shared with
-    # static/js/app.js. Preserve these names when refactoring frontend modules,
-    # because they are the contract for chat, focus timer, whiteboard and pins.
+    # Estes tipos de mensagem formam o protocolo realtime usado pelo frontend.
+    # Mantenha os nomes ao modularizar app.js, pois eles conectam chat, foco,
+    # lousa, pins e documentos ao backend.
     if msg_type == "chat_message":
         content = data.get("content", "").strip()
         msg_subtype = data.get("subtype", "text")
