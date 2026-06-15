@@ -420,18 +420,17 @@ Responda SOMENTE com JSON no formato:
     {"semana": 3, "foco": "tema", "atividades": ["atividade1", "atividade2"]}
   ],
   "dica_motivacional": "frase motivacional curta"
-}`;
+    }`;
 
     try {
-      const res = await fetch("https://api.cohere.com/v2/chat", {
+      // A chave da IA fica no backend. O frontend envia apenas o prompt e
+      // recebe a resposta ja mediada por /api/ai/chat.
+      const res = await fetch("/api/ai/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer huoEFQPVRHM2dxExMxQUwATC2E5BjpuBxayswVxl",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "command-a-03-2025",
-          messages: [{ role: "user", content: prompt }],
+          message: prompt,
+          context: "Voce gera planos de estudo personalizados em JSON valido para a Lorac.",
         }),
       });
 
@@ -440,7 +439,7 @@ Responda SOMENTE com JSON no formato:
         throw new Error(err.message || `HTTP ${res.status}`);
       }
       const data = await res.json();
-      const raw = (data.message?.content?.[0]?.text || "").replace(/```json|```/g, "").trim();
+      const raw = (data.response || "").replace(/```json|```/g, "").trim();
       const match = raw.match(/\{[\s\S]*\}/);
       const analise = JSON.parse(match ? match[0] : raw);
 

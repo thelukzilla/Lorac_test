@@ -4499,15 +4499,26 @@ async function login() {
     toast('🤖 IA analisando o texto... Gerando flashcards.', 'info');
 
     try {
-      const res = await fetch(`${API}/api/ai/generate-quiz`, {
+      const res = await fetch(`${API}/api/ai/gerar-questoes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
+        body: JSON.stringify({
+          tema_ou_texto: text,
+          tipo: 'escrever',
+          quantidade: 5,
+          nivel: 'medio'
+        })
       });
 
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erro ao gerar flashcards');
+      }
       const data = await res.json();
-      const newCards = data.quiz;
+      const newCards = (data.questoes || []).map(q => ({
+        q: q.enunciado,
+        a: q.gabarito_comentado || 'Revise este ponto no documento.'
+      }));
 
       if (Array.isArray(newCards)) {
         newCards.forEach(c => {
