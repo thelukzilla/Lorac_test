@@ -1,0 +1,4 @@
+# Instale somente quando for habilitar IA e chamadas ao vivo.
+-r requirements.txt
+cohere>=5.0.0
+livekit-api>=0.8.0

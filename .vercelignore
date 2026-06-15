@@ -1,0 +1,8 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/*.xlsx
+backend/test_*.py
+docs/contexto.md
